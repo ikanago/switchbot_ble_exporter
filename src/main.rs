@@ -1,62 +1,69 @@
-use btleplug::api::{bleuuid::uuid_from_u16, Central, Manager as _, Peripheral as _, ScanFilter, WriteType};
-use btleplug::platform::{Adapter, Manager, Peripheral};
-use rand::{Rng, thread_rng};
 use std::error::Error;
-use std::time::Duration;
-use tokio::time;
+use std::str::FromStr;
+
+use btleplug::api::CentralEvent;
+use btleplug::api::{Central, Manager as _, ScanFilter};
+use btleplug::platform::Manager;
+use tokio::runtime::Runtime;
+use tokio_stream::StreamExt;
 use uuid::Uuid;
 
-const LIGHT_CHARACTERISTIC_UUID: Uuid = uuid_from_u16(0xFFE9);
+fn main() -> Result<(), Box<dyn Error>> {
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        let manager = Manager::new().await.unwrap();
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let manager = Manager::new().await.unwrap();
+        // get the first bluetooth adapter
+        let adapters = manager.adapters().await?;
+        let central = adapters.into_iter().nth(0).unwrap();
 
-    // get the first bluetooth adapter
-    let adapters = manager.adapters().await?;
-    let central = adapters.into_iter().nth(0).unwrap();
+        // start scanning for devices
+        let mut events = central.events().await?;
+        central.start_scan(ScanFilter::default()).await?;
 
-    // start scanning for devices
-    central.start_scan(ScanFilter::default()).await?;
-    // instead of waiting, you can use central.events() to get a stream which will
-    // notify you of new devices, for an example of that see examples/event_driven_discovery.rs
-    time::sleep(Duration::from_secs(2)).await;
+        while let Some(event) = events.next().await {
+            if let CentralEvent::ServiceDataAdvertisement { service_data, .. } = event {
+                let service_uuid = Uuid::from_str("0000fd3d-0000-1000-8000-00805f9b34fb")?;
+                if let Some(service_data) = service_data.get(&service_uuid) {
+                    if service_data.len() != 6 {
+                        continue;
+                    }
+                    let metrics = parse_service_data(&service_data);
+                    println!(
+                        "Battery: {}%, Temperature: {}°C, Humidity: {}%",
+                        metrics.battery, metrics.temperature, metrics.humidity
+                    );
+                    break;
+                }
+            }
+        }
+        central.stop_scan().await?;
 
-    // find the device we're interested in
-    let light = find_light(&central).await.unwrap();
-
-    // connect to the device
-    light.connect().await?;
-
-    // discover services and characteristics
-    light.discover_services().await?;
-
-    // find the characteristic we want
-    let chars = light.characteristics();
-    let cmd_char = chars.iter().find(|c| c.uuid == LIGHT_CHARACTERISTIC_UUID).unwrap();
-
-    // dance party
-    let mut rng = thread_rng();
-    for _ in 0..20 {
-        let color_cmd = vec![0x56, rng.gen(), rng.gen(), rng.gen(), 0x00, 0xF0, 0xAA];
-        light.write(&cmd_char, &color_cmd, WriteType::WithoutResponse).await?;
-        time::sleep(Duration::from_millis(200)).await;
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
-async fn find_light(central: &Adapter) -> Option<Peripheral> {
-    for p in central.peripherals().await.unwrap() {
-        if p.properties()
-            .await
-            .unwrap()
-            .unwrap()
-            .local_name
-            .iter()
-            .any(|name| name.contains("LEDBlue"))
-        {
-            return Some(p);
-        }
+#[derive(Debug)]
+struct Metrics {
+    battery: u8,
+    temperature: f64,
+    humidity: u8,
+}
+
+fn parse_service_data(data: &[u8]) -> Metrics {
+    let battery = data[2] & 0b0111_1111;
+    let is_temperature_above_freezing = data[4] & 0b1000_0000 > 0;
+    let temperature = (data[3] & 0b0000_1111) as f64 * 0.1 + (data[4] & 0b0111_1111) as f64;
+    let temperature = if is_temperature_above_freezing {
+        temperature
+    } else {
+        -temperature
+    };
+    let humidity = data[5] & 0b0111_1111;
+
+    Metrics {
+        battery,
+        temperature,
+        humidity,
     }
-    None
 }
