@@ -18,5 +18,4 @@ echo -e "\r$msg done! (in $time s)"
 sudo hciconfig hci0 down
 sudo hciconfig hci0 up
 
-# start application
-bash "$@"
+./switchbot_ble_exporter

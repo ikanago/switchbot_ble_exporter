@@ -21,11 +21,10 @@ RUN apt-get update && apt-get install -y \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# setup bluetooth permissions
 COPY ./bluezuser.conf /etc/dbus-1/system.d/
 RUN useradd -m bluezuser  && adduser bluezuser sudo  && passwd -d bluezuser
 USER bluezuser
 
-# setup startup script
+COPY --from=builder /build/target/release/switchbot_ble_exporter .
 COPY entrypoint.sh .
 CMD ./entrypoint.sh
