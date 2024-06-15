@@ -30,4 +30,5 @@ USER bluezuser
 
 COPY --from=builder /build/target/release/switchbot_ble_exporter .
 COPY entrypoint.sh .
-CMD ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+ENTRYPOINT ["./entrypoint.sh"]
