@@ -23,6 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         while let Some(event) = events.next().await {
             if let CentralEvent::ServiceDataAdvertisement { service_data, .. } = event {
+                println!("Service data: {:?}", service_data);
                 let service_uuid = Uuid::from_str("0000fd3d-0000-1000-8000-00805f9b34fb")?;
                 if let Some(service_data) = service_data.get(&service_uuid) {
                     if service_data.len() != 6 {
@@ -33,7 +34,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                         "Battery: {}%, Temperature: {}°C, Humidity: {}%",
                         metrics.battery, metrics.temperature, metrics.humidity
                     );
-                    break;
                 }
             }
         }
