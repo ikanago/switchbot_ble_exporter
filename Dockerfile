@@ -7,6 +7,9 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 WORKDIR /build
+RUN apt-get update && apt-get install -y \
+    libdbus-1-dev \
+    pkg-config \
 COPY --from=planner /plan/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
