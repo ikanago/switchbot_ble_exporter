@@ -26,9 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-buildx-action@v5
+      - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/metadata-action@v3
+      - uses: docker/metadata-action@v5
         id: metadata
         with:
           images: ${{ env.CONTAINER_REGISTRY }}/${{ github.repository }}
