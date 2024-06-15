@@ -30,4 +30,5 @@ USER bluezuser
 
 COPY --chown=bluezuser:bluezuser --from=builder /build/target/release/switchbot_ble_exporter .
 COPY --chown=bluezuser:bluezuser entrypoint.sh .
+RUN chmod +x ./entrypoint.sh
 ENTRYPOINT ["./entrypoint.sh"]
