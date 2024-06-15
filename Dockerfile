@@ -28,7 +28,6 @@ COPY ./bluezuser.conf /etc/dbus-1/system.d/
 RUN useradd -m bluezuser  && adduser bluezuser sudo  && passwd -d bluezuser
 USER bluezuser
 
-COPY --from=builder /build/target/release/switchbot_ble_exporter .
-COPY entrypoint.sh .
-RUN chmod +x ./entrypoint.sh
+COPY --chown=bluezuser:bluezuser --from=builder /build/target/release/switchbot_ble_exporter .
+COPY --chown=bluezuser:bluezuser entrypoint.sh .
 ENTRYPOINT ["./entrypoint.sh"]
