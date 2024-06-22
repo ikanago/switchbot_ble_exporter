@@ -32,6 +32,8 @@ jobs:
         id: metadata
         with:
           images: ${{ env.CONTAINER_REGISTRY }}/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - uses: docker/login-action@v3
         with:
