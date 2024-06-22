@@ -1,12 +1,13 @@
 use std::error::Error;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
 
 use btleplug::api::CentralEvent;
 use btleplug::api::{Central, Manager as _, ScanFilter};
 use btleplug::platform::Manager;
 use tokio_stream::StreamExt;
 use uuid::Uuid;
+
+use crate::{BATTERY, HUMIDITY, TEMPERATURE};
 
 #[derive(Debug)]
 pub struct SensorData {
@@ -15,14 +16,12 @@ pub struct SensorData {
     pub humidity: f64,
 }
 
-pub async fn scan_loop(
-    latest_metrics: Arc<Mutex<Option<SensorData>>>,
-) -> Result<(), Box<dyn Error>> {
+pub async fn scan_loop() -> Result<(), Box<dyn Error>> {
     let manager = Manager::new().await.unwrap();
 
     // get the first bluetooth adapter
     let adapters = manager.adapters().await?;
-    let central = adapters.into_iter().nth(0).unwrap();
+    let central = adapters.into_iter().next().unwrap();
 
     let mut events = central.events().await?;
     central.start_scan(ScanFilter::default()).await?;
@@ -34,12 +33,20 @@ pub async fn scan_loop(
                 if service_data.len() != 6 {
                     continue;
                 }
-                let metrics = parse_service_data(&service_data);
+                let metrics = parse_service_data(service_data);
                 println!(
                     "Battery: {}%, Temperature: {}°C, Humidity: {}%",
                     metrics.battery, metrics.temperature, metrics.humidity
                 );
-                *latest_metrics.lock().unwrap() = Some(metrics);
+                if let Some(battery) = BATTERY.get() {
+                    battery.set(metrics.battery);
+                }
+                if let Some(temperature) = TEMPERATURE.get() {
+                    temperature.set(metrics.temperature);
+                }
+                if let Some(humidity) = HUMIDITY.get() {
+                    humidity.set(metrics.humidity);
+                }
             }
         }
     }

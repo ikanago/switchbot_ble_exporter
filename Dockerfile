@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ./bluezuser.conf /etc/dbus-1/system.d/
-RUN useradd -m bluezuser  && adduser bluezuser sudo  && passwd -d bluezuser
+RUN useradd -m bluezuser && adduser bluezuser sudo && passwd -d bluezuser
 USER bluezuser
 
 COPY --chown=bluezuser:bluezuser --from=builder /build/target/release/switchbot_ble_exporter .
