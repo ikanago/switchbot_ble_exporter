@@ -2,8 +2,10 @@ use std::error::Error;
 use std::sync::OnceLock;
 
 use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;
+use log::{error, info};
 use prometheus::{register_gauge, Encoder, Gauge};
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
@@ -36,13 +38,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     let rt = Runtime::new()?;
     rt.block_on(async {
         tokio::spawn(async move {
-            scan::scan_loop().await.unwrap();
+            if let Err(err) = scan::scan_loop().await {
+                error!("Failed to scan: {}", err);
+            }
         });
 
         let app = Router::new()
             .route("/metrics", get(handler))
-            .fallback(|| async { StatusCode::NOT_FOUND });
-        let listener = TcpListener::bind(("0.0.0.0", 8080)).await.unwrap();
+            .fallback(landing);
+        let port = std::env::var("PORT")
+            .unwrap_or_else(|_| "8080".to_string())
+            .parse()
+            .unwrap();
+        let listener = TcpListener::bind(("0.0.0.0", port)).await.unwrap();
+        info!("Listening on: {}", listener.local_addr().unwrap());
         axum::serve(listener, app).await.unwrap();
     });
     Ok(())
@@ -53,7 +62,7 @@ async fn handler() -> (StatusCode, String) {
     let mut buffer = vec![];
     let encoder = prometheus::TextEncoder::new();
     if let Err(err) = encoder.encode(&metrics_families, &mut buffer) {
-        eprintln!("Failed to encode metrics: {}", err);
+        error!("Failed to encode metrics: {}", err);
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             String::from("Internal server error\n"),
@@ -62,4 +71,16 @@ async fn handler() -> (StatusCode, String) {
 
     let buffer = String::from_utf8(buffer).unwrap();
     (StatusCode::OK, buffer)
+}
+
+async fn landing() -> impl IntoResponse {
+    let header = [("Content-Type", "text/html")];
+    let body = r#"<html>
+<head><title>SwitchBot TH Exporter</title></head>
+<body>
+<h1>SwitchBot TH Exporter</h1>
+<p><a href="/metrics">Metrics</a></p>
+</body>
+"#;
+    (StatusCode::OK, header, body)
 }

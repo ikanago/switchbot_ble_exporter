@@ -1043,6 +1043,7 @@ dependencies = [
  "axum",
  "btleplug",
  "chrono",
+ "log",
  "prometheus",
  "tokio",
  "tokio-stream",

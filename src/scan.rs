@@ -4,6 +4,7 @@ use std::str::FromStr;
 use btleplug::api::CentralEvent;
 use btleplug::api::{Central, Manager as _, ScanFilter};
 use btleplug::platform::Manager;
+use log::info;
 use tokio_stream::StreamExt;
 use uuid::Uuid;
 
@@ -17,27 +18,28 @@ pub struct SensorData {
 }
 
 pub async fn scan_loop() -> Result<(), Box<dyn Error>> {
-    let manager = Manager::new().await.unwrap();
+    let manager = Manager::new().await?;
 
     // get the first bluetooth adapter
     let adapters = manager.adapters().await?;
-    let central = adapters.into_iter().next().unwrap();
+    let central = adapters
+        .into_iter()
+        .next()
+        .ok_or("No Bluetooth adapter found")?;
 
     let mut events = central.events().await?;
     central.start_scan(ScanFilter::default()).await?;
+    info!("Start scanning for SwitchBot TH");
 
+    let service_uuid = Uuid::from_str("0000fd3d-0000-1000-8000-00805f9b34fb")?;
     while let Some(event) = events.next().await {
         if let CentralEvent::ServiceDataAdvertisement { service_data, .. } = event {
-            let service_uuid = Uuid::from_str("0000fd3d-0000-1000-8000-00805f9b34fb")?;
             if let Some(service_data) = service_data.get(&service_uuid) {
                 if service_data.len() != 6 {
                     continue;
                 }
                 let metrics = parse_service_data(service_data);
-                println!(
-                    "Battery: {}%, Temperature: {}°C, Humidity: {}%",
-                    metrics.battery, metrics.temperature, metrics.humidity
-                );
+
                 if let Some(battery) = BATTERY.get() {
                     battery.set(metrics.battery);
                 }
