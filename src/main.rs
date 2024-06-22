@@ -37,6 +37,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let rt = Runtime::new()?;
     rt.block_on(async {
+        env_logger::init();
+
         tokio::spawn(async move {
             if let Err(err) = scan::scan_loop().await {
                 error!("Failed to scan: {}", err);
