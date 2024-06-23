@@ -8,13 +8,15 @@ use log::info;
 use tokio_stream::StreamExt;
 use uuid::Uuid;
 
-use crate::{BATTERY, HUMIDITY, TEMPERATURE};
+use crate::{BATTERY, DISCOMFORT_INDEX, HUMIDITY, TEMPERATURE, VPD};
 
 #[derive(Debug)]
 pub struct SensorData {
     pub battery: f64,
     pub temperature: f64,
     pub humidity: f64,
+    pub vpd: f64,
+    pub discomfort_index: f64,
 }
 
 pub async fn scan_loop() -> Result<(), Box<dyn Error>> {
@@ -49,6 +51,12 @@ pub async fn scan_loop() -> Result<(), Box<dyn Error>> {
                 if let Some(humidity) = HUMIDITY.get() {
                     humidity.set(metrics.humidity);
                 }
+                if let Some(vpd) = VPD.get() {
+                    vpd.set(metrics.vpd);
+                }
+                if let Some(discomfort_index) = DISCOMFORT_INDEX.get() {
+                    discomfort_index.set(metrics.discomfort_index);
+                }
             }
         }
     }
@@ -67,10 +75,28 @@ fn parse_service_data(data: &[u8]) -> SensorData {
         -temperature
     };
     let humidity = (data[5] & 0b0111_1111) as f64;
+    let vpd = calculate_vpd(temperature, humidity);
+    let discomfort_index = calculate_discomfort_index(temperature, humidity);
 
     SensorData {
         battery,
         temperature,
         humidity,
+        vpd,
+        discomfort_index,
     }
+}
+
+fn calculate_saturation_vapor_pressure(temperature: f64) -> f64 {
+    // Calculate saturation vapor pressure in hPa by Tetens formula
+    6.1078 * 10.0_f64.powf(7.5 * temperature / (237.3 + temperature))
+}
+
+fn calculate_vpd(temperature: f64, relative_humidity: f64) -> f64 {
+    let saturation_vapor_pressure = calculate_saturation_vapor_pressure(temperature);
+    saturation_vapor_pressure * (1.0 - relative_humidity * 0.01)
+}
+
+fn calculate_discomfort_index(temperature: f64, relative_humidity: f64) -> f64 {
+    0.81 * temperature + 0.01 * relative_humidity * (0.99 * temperature - 14.3) + 46.3
 }

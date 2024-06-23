@@ -15,6 +15,8 @@ mod scan;
 static BATTERY: OnceLock<Gauge> = OnceLock::new();
 static TEMPERATURE: OnceLock<Gauge> = OnceLock::new();
 static HUMIDITY: OnceLock<Gauge> = OnceLock::new();
+static VPD: OnceLock<Gauge> = OnceLock::new();
+static DISCOMFORT_INDEX: OnceLock<Gauge> = OnceLock::new();
 
 fn main() -> Result<(), Box<dyn Error>> {
     BATTERY.get_or_init(|| {
@@ -35,6 +37,20 @@ fn main() -> Result<(), Box<dyn Error>> {
         register_gauge!(
             "switchbot_th_humidity",
             "Relative humudity measured by SwitchBot TH in percent"
+        )
+        .unwrap()
+    });
+    VPD.get_or_init(|| {
+        register_gauge!(
+            "switchbot_th_vpd",
+            "Vapor pressure deficit calculated from temperature and relative humidity"
+        )
+        .unwrap()
+    });
+    DISCOMFORT_INDEX.get_or_init(|| {
+        register_gauge!(
+            "switchbot_th_discomfort_index",
+            "Discomfort index calculated from temperature and relative humidity"
         )
         .unwrap()
     });
