@@ -18,7 +18,11 @@ static HUMIDITY: OnceLock<Gauge> = OnceLock::new();
 
 fn main() -> Result<(), Box<dyn Error>> {
     BATTERY.get_or_init(|| {
-        register_gauge!("switchbot_th_battery", "Battery level of SwitchBot TH in percent").unwrap()
+        register_gauge!(
+            "switchbot_th_battery",
+            "Battery level of SwitchBot TH in percent"
+        )
+        .unwrap()
     });
     TEMPERATURE.get_or_init(|| {
         register_gauge!(
