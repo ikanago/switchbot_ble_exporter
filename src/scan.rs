@@ -4,7 +4,7 @@ use std::str::FromStr;
 use btleplug::api::CentralEvent;
 use btleplug::api::{Central, Manager as _, ScanFilter};
 use btleplug::platform::Manager;
-use log::info;
+use log::{debug, info};
 use tokio_stream::StreamExt;
 use uuid::Uuid;
 
@@ -41,6 +41,10 @@ pub async fn scan_loop() -> Result<(), Box<dyn Error>> {
                     continue;
                 }
                 let metrics = parse_service_data(service_data);
+                debug!(
+                    "Battery: {}%, Temperature: {}°C, Humidity: {}%",
+                    metrics.battery, metrics.temperature, metrics.humidity
+                );
 
                 if let Some(battery) = BATTERY.get() {
                     battery.set(metrics.battery);
