@@ -93,8 +93,9 @@ fn calculate_saturation_vapor_pressure(temperature: f64) -> f64 {
 }
 
 fn calculate_vpd(temperature: f64, relative_humidity: f64) -> f64 {
+    // Calculate vapor pressure deficit in kPa
     let saturation_vapor_pressure = calculate_saturation_vapor_pressure(temperature);
-    saturation_vapor_pressure * (1.0 - relative_humidity * 0.01)
+    saturation_vapor_pressure * (1.0 - relative_humidity * 0.01) * 0.1
 }
 
 fn calculate_discomfort_index(temperature: f64, relative_humidity: f64) -> f64 {
