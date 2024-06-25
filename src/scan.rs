@@ -33,10 +33,9 @@ pub async fn scan_loop() -> Result<(), Box<dyn Error>> {
     central.start_scan(ScanFilter::default()).await?;
     info!("Start scanning for SwitchBot TH");
 
-    let service_uuid = Uuid::from_str("0000fd3d-0000-1000-8000-00805f9b34fb")?;
     while let Some(event) = events.next().await {
         if let CentralEvent::ServiceDataAdvertisement { service_data, .. } = event {
-            if let Some(service_data) = service_data.get(&service_uuid) {
+            for (_, service_data) in service_data.iter() {
                 if service_data.len() != 6 {
                     continue;
                 }
