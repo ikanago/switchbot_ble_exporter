@@ -1,12 +1,10 @@
 use std::error::Error;
-use std::str::FromStr;
 
 use btleplug::api::CentralEvent;
 use btleplug::api::{Central, Manager as _, ScanFilter};
 use btleplug::platform::Manager;
 use log::{debug, info};
 use tokio_stream::StreamExt;
-use uuid::Uuid;
 
 use crate::{BATTERY, DISCOMFORT_INDEX, HUMIDITY, TEMPERATURE, VPD};
 
@@ -35,14 +33,14 @@ pub async fn scan_loop() -> Result<(), Box<dyn Error>> {
 
     while let Some(event) = events.next().await {
         if let CentralEvent::ServiceDataAdvertisement { service_data, .. } = event {
-            for (_, service_data) in service_data.iter() {
+            for (uuid, service_data) in service_data.iter() {
                 if service_data.len() != 6 {
                     continue;
                 }
                 let metrics = parse_service_data(service_data);
                 debug!(
-                    "Battery: {}%, Temperature: {}°C, Humidity: {}%",
-                    metrics.battery, metrics.temperature, metrics.humidity
+                    "UUID: {}, Battery: {}%, Temperature: {}°C, Humidity: {}%",
+                    uuid, metrics.battery, metrics.temperature, metrics.humidity
                 );
 
                 if let Some(battery) = BATTERY.get() {
